@@ -8,14 +8,15 @@
 import Foundation
 
 protocol DependencyProviding {
-    var apodService: APODServicing { get }
+    var pictureRepository: PictureRepository { get }
 }
 
 final class DependencyContainer: DependencyProviding {
     
     private let networkService: NetworkServicing
-    var apodService: APODServicing
-    var imageService: ImageServicing
+    private let apodService: APODServicing
+    private let imageService: ImageServicing
+    let pictureRepository: PictureRepository
     
     init(networkService: NetworkServicing = NetworkService()) {
         self.networkService = networkService
@@ -23,5 +24,6 @@ final class DependencyContainer: DependencyProviding {
         self.imageService = ImageService(networkService: networkService,
                                          hasher1: SHA256ImageHasher(), //Hash1 = SHA-256
                                          hasher2: MD5ImageHashing()) //Hash2 = MD5
+        self.pictureRepository = APODRepository(apodService: apodService, imageService: imageService)
     }
 }

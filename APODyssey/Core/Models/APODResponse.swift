@@ -15,6 +15,16 @@ struct APODResponse: Decodable, Identifiable, Hashable {
     let explanation: String
     let url: String
     let hdurl: String?
-    let media_type: String
+    let mediaType: String
     let copyright: String?
+    
+    enum CodingKeys: String, CodingKey {
+        case date
+        case title
+        case explanation
+        case url
+        case hdurl
+        case mediaType = "media_type"
+        case copyright
+    }
 }

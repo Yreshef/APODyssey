@@ -6,3 +6,12 @@
 //
 
 import Foundation
+
+final class MainViewModel {
+    
+    private let repository: PictureRepository
+    
+    init(repository: PictureRepository) {
+        self.repository = repository
+    }
+}

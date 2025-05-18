@@ -8,9 +8,11 @@
 import UIKit
 
 struct FetchedImage {
-//    let metadata: PictureOfTheDay
-//    let data: Data
     let image: UIImage
     let hash1: String
     let hash2: String
+    
+    // Optional: generated from 300x300 resize
+    let thumbnail300: UIImage?
+    let thumbnailHash: String?
 }

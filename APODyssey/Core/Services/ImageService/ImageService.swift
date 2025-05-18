@@ -9,7 +9,7 @@ import UIKit
 import Combine
 
 protocol ImageServicing {
-    func fetchImageData(from url: URL) -> AnyPublisher<FetchedImage, ImageServiceError>
+    func fetchImage(from url: URL) -> AnyPublisher<FetchedImage, ImageServiceError>
 }
 
 final class ImageService: ImageServicing {
@@ -24,7 +24,7 @@ final class ImageService: ImageServicing {
         self.hasher2 = hasher2
     }
     
-    func fetchImageData(from url: URL) -> AnyPublisher<FetchedImage, ImageServiceError> {
+    func fetchImage(from url: URL) -> AnyPublisher<FetchedImage, ImageServiceError> {
         networkService.fetchImageData(from: url)
             .mapError { ImageServiceError.network($0) }
             .tryMap { data in
@@ -35,7 +35,14 @@ final class ImageService: ImageServicing {
                 let hash1 = self.hasher1.hash(data: data)
                 let hash2 = self.hasher2.hash(data: data)
                 
-                return FetchedImage(image: image, hash1: hash1, hash2: hash2)
+                let thumbnail300 = image.resized(to: CGSize(width: 300, height: 300))
+                let thumbnailHash = thumbnail300?.hash(using: self.hasher2)
+
+                return FetchedImage(image: image,
+                                    hash1: hash1,
+                                    hash2: hash2,
+                                    thumbnail300: thumbnail300,
+                                    thumbnailHash: thumbnailHash)
             }
             .mapError { error in
                 error as? ImageServiceError ?? .invalidImageData

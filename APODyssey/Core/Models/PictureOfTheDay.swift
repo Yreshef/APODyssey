@@ -23,5 +23,8 @@ struct PictureOfTheDay: Identifiable {
     let hash1: String
     let hash2: String
 
-    let thumbnail: UIImage?
+    // Thumbnails
+    let thumbnail100: UIImage?
+    let thumbnail300: UIImage?
+    let thumbnail300Hash: String?
 }
