@@ -11,6 +11,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     
     var window: UIWindow?
     var appCoordinator: AppCoordinator?
+    var container: DependencyProviding = DependencyContainer()
 
     func scene(
         _ scene: UIScene, willConnectTo session: UISceneSession,
@@ -18,7 +19,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     ) {
         guard let windowScene = (scene as? UIWindowScene) else { return }
         let window = UIWindow(windowScene: windowScene)
-        let coordinator: AppCoordinator = AppCoordinator(window: window)
+        let coordinator: AppCoordinator = AppCoordinator(window: window, container: container)
         self.window = window
         self.appCoordinator = coordinator
         coordinator.start()

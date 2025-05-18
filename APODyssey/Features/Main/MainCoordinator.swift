@@ -8,13 +8,15 @@
 import UIKit
 
 final class MainCoordinator: NSObject, Coordinator, UINavigationControllerDelegate {
+    
     let navigationController: UINavigationController
     var childCoordinators: [Coordinator] = []
-    
+    private let dependencies: DependencyProviding
     private var viewControllerToCoordinator: [UIViewController: Coordinator] = [:]
 
-    init(navigationController: UINavigationController) {
+    init(navigationController: UINavigationController, dependencies: DependencyProviding) {
         self.navigationController = navigationController
+        self.dependencies = dependencies
         super.init()
         self.navigationController.delegate = self
     }

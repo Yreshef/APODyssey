@@ -21,16 +21,18 @@ final class AppCoordinator: Coordinator {
     let window: UIWindow
     let navigationController: UINavigationController
     private var mainCoordinator: MainCoordinator?
+    private var container: DependencyProviding
 
     var childCoordinators: [Coordinator] = []
 
-    init(window: UIWindow) {
+    init(window: UIWindow, container: DependencyProviding) {
         self.window = window
         self.navigationController = UINavigationController()
+        self.container = container
     }
 
     func start() {
-        let mainCoordinator = MainCoordinator(navigationController: navigationController)
+        let mainCoordinator = MainCoordinator(navigationController: navigationController, dependencies: container)
 
         addChild(mainCoordinator)
         self.mainCoordinator = mainCoordinator
