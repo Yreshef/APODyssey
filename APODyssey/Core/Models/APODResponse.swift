@@ -7,14 +7,14 @@
 
 import Foundation
 
-struct AstronomyPicture: Decodable {
+struct APODResponse: Decodable, Identifiable, Hashable {
+    var id: String { date }  //Only one image per day, each date is unique
+
     let date: String
+    let title: String
     let explanation: String
+    let url: String
     let hdurl: String?
     let media_type: String
-    let service_version: String
-    let title: String
-    let url: String
-    let thumbnail_url: String?
     let copyright: String?
 }

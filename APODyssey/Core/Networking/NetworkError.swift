@@ -12,7 +12,6 @@ enum NetworkError: LocalizedError {
     case failedToBuildURLFromComponents
     case invalidResponse
     case requestFailure(statusCode: Int)
-    case decodingFailure
     case noData
     case unknown(error: Error)
     
@@ -26,8 +25,6 @@ enum NetworkError: LocalizedError {
             return "The server response was not an HTTP response."
         case .requestFailure(let statusCode):
             return "Request failed with status code \(statusCode)."
-        case .decodingFailure:
-            return "Failed to decode response."
         case .noData:
             return "Request returned no data."
         case .unknown(let error):

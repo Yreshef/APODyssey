@@ -9,7 +9,8 @@ import Foundation
 import Combine
 
 protocol NetworkServicing {
-    func fetch<T: Decodable>(_ type: T.Type, from route: NetworkRoute) -> AnyPublisher<Data, NetworkError>
+    func fetch(from route: NetworkRoute) -> AnyPublisher<Data, NetworkError>
+    func fetchImageData(from url: URL) -> AnyPublisher<Data, NetworkError>
 }
 
 final class NetworkService: NetworkServicing {
@@ -20,7 +21,7 @@ final class NetworkService: NetworkServicing {
         self.urlSession = urlSession
     }
     
-    func fetch<T: Decodable>(_ type: T.Type, from route: NetworkRoute) -> AnyPublisher<Data, NetworkError> {
+    func fetch(from route: NetworkRoute) -> AnyPublisher<Data, NetworkError> {
         
         guard var components = URLComponents(string: route.urlPath) else {
             return Fail(error: NetworkError.invalidURL).eraseToAnyPublisher()
@@ -59,6 +60,29 @@ final class NetworkService: NetworkServicing {
             .mapError { error -> NetworkError in
                 if let netError = error as? NetworkError {
                     return netError
+                } else {
+                    return .unknown(error: error)
+                }
+            }
+            .eraseToAnyPublisher()
+    }
+    
+    func fetchImageData(from url: URL) -> AnyPublisher<Data, NetworkError> {
+        urlSession.dataTaskPublisher(for: url)
+            .tryMap { response in
+                guard let res = response.response as? HTTPURLResponse else {
+                    throw NetworkError.invalidResponse
+                }
+                
+                guard 200...299 ~= res.statusCode else {
+                    throw NetworkError.requestFailure(statusCode: res.statusCode)
+                }
+                
+                return response.data
+            }
+            .mapError { error in
+                if let networkError = error as? NetworkError {
+                    return networkError
                 } else {
                     return .unknown(error: error)
                 }

@@ -13,11 +13,15 @@ protocol DependencyProviding {
 
 final class DependencyContainer: DependencyProviding {
     
-    private var networkService: NetworkServicing
+    private let networkService: NetworkServicing
     var apodService: APODServicing
+    var imageService: ImageServicing
     
     init(networkService: NetworkServicing = NetworkService()) {
         self.networkService = networkService
         self.apodService = APODService(networkService: self.networkService)
+        self.imageService = ImageService(networkService: networkService,
+                                         hasher1: SHA256ImageHasher(), //Hash1 = SHA-256
+                                         hasher2: MD5ImageHashing()) //Hash2 = MD5
     }
 }
