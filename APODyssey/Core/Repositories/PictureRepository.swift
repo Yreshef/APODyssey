@@ -12,8 +12,8 @@ protocol PictureRepository {
     func fetchPicture(for date: Date) -> AnyPublisher<
         PictureOfTheDay, PictureRepositoryError
     >
-    func fetchRange(start: Date, end: Date) -> AnyPublisher<
-        [PictureOfTheDay], PictureRepositoryError
+    func fetchPictures(from startDate: Date, to endDate: Date) -> AnyPublisher<
+        PictureOfTheDay, PictureRepositoryError
     >
 }
 
@@ -80,14 +80,14 @@ final class APODRepository: PictureRepository {
             .eraseToAnyPublisher()
     }
 
-    func fetchRange(start: Date, end: Date) -> AnyPublisher<
-        [PictureOfTheDay], PictureRepositoryError
+    func fetchPictures(from startDate: Date, to endDate: Date) -> AnyPublisher<
+        PictureOfTheDay, PictureRepositoryError
     > {
-        apodService.fetchRange(start: start, end: end)
+        apodService.fetchRange(start: startDate, end: endDate)
             .mapError { PictureRepositoryError.apod($0) }
             .flatMap {
                 responses -> AnyPublisher<
-                    [PictureOfTheDay], PictureRepositoryError
+                    PictureOfTheDay, PictureRepositoryError
                 > in
                 let validResponses = responses.filter {
                     $0.mediaType == "image" && ($0.url.flatMap{URL(string: $0)} != nil)
@@ -123,7 +123,6 @@ final class APODRepository: PictureRepository {
                 }
 
                 return Publishers.MergeMany(publishers)
-                    .collect()
                     .setFailureType(to: PictureRepositoryError.self)
                     .eraseToAnyPublisher()
             }

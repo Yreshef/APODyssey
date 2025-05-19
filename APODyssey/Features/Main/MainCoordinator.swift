@@ -7,9 +7,7 @@
 
 import UIKit
 
-final class MainCoordinator: NSObject, Coordinator,
-    UINavigationControllerDelegate
-{
+final class MainCoordinator: NSObject, Coordinator, UINavigationControllerDelegate {
 
     let navigationController: UINavigationController
     var childCoordinators: [Coordinator] = []
@@ -30,6 +28,15 @@ final class MainCoordinator: NSObject, Coordinator,
     func start() {
         let viewModel = MainViewModel(
             repository: dependencies.pictureRepository)
+        
+        viewModel.onDateRangeSelected = { [weak self] start, end in
+            self?.showGallery(start: start, end: end)
+        }
+        
+        viewModel.onDateSelected = { [weak self] date in
+            self?.showDetail(for: date)
+        }
+        
         let mainVC = MainViewController(viewModel: viewModel)
         mainVC.view.backgroundColor = .systemBackground
         mainVC.title = "APODyssey"
@@ -39,19 +46,28 @@ final class MainCoordinator: NSObject, Coordinator,
         navigationController.setViewControllers([mainVC], animated: false)
     }
 
-    private func showDateSelection() {
-        //TODO: implement date picker
-    }
-
     private func showDetail(for date: Date) {
         //TODO: implement detail navigation
+        print("Showing detail screen soon...")
     }
 
-    private func showList(start: Date, end: Date) {
-        //TODO: implement list navigation
+    private func showGallery(start: Date, end: Date) {
+        let viewModel = GalleryViewModel(repository: dependencies.pictureRepository,
+                                         startDate: start,
+                                         endDate: end)
+        
+        viewModel.onImageTapped = { [weak self] image in
+            print("Image: \(image)")
+            self?.showDetail(for: Date()) //TODO: Implement navigation
+        }
+        
+        let galleryVC = GalleryViewController(viewModel: viewModel)
+        galleryVC.view.backgroundColor = .systemBackground
+        navigationController.pushViewController(galleryVC, animated: true)
     }
 
     // MARK: - Coordinator Helpers
+    
     func addChild(_ coordinator: Coordinator) {
         childCoordinators.append(coordinator)
     }

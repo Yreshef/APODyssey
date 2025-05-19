@@ -8,18 +8,19 @@
 import Combine
 import Foundation
 
-final class MainViewModel {
+final class MainViewModel: ErrorEmitting {
 
     // MARK: - Outputs
     @Published private(set) var picture: PictureOfTheDay?
     @Published private(set) var isLoading: Bool = false
     @Published private(set) var errorMessage: String?
-
-    // MARK: - Inputs
-    let selectDateOrRange = PassthroughSubject<Void, Never>()
+    var errorMessagePublisher: AnyPublisher<String?, Never> {
+        $errorMessage.eraseToAnyPublisher()
+    }
 
     // MARK: - Coordinator Callback
-    var onSelectDateOrRange: (() -> Void)?
+    var onDateRangeSelected: ((Date, Date) -> Void)?
+    var onDateSelected: ((Date) -> Void)?
 
     // MARK: - Dependencies
     private let repository: PictureRepository
@@ -28,36 +29,19 @@ final class MainViewModel {
     // MARK: - Init
     init(repository: PictureRepository) {
         self.repository = repository
-        bindSelectAction()
     }
 
-    // MARK: - Private Methods
-    private func bindSelectAction() {
-        selectDateOrRange
-            .sink { [weak self] in
-                self?.onSelectDateOrRange?()
-            }
-            .store(in: &cancellables)
-    }
-    
     func handleUserDateSelection(_ components: [DateComponents]) {
-        let dates = components
+        let dates =
+            components
             .compactMap { Calendar.current.date(from: $0) }
             .sorted()
-        
+
         switch dates.count {
-        case 1: fetchSingleDateImage(for: dates[0])
-        case 2: fetchRange(start: dates[0], end: dates[1])
+        case 1: onDateSelected?(dates[0])
+        case 2: onDateRangeSelected?(dates[0], dates[1])
         default: errorMessage = "invalid selection"
         }
-    }
-    
-    private func fetchSingleDateImage(for date: Date) {
-        print("fetching single image")
-    }
-    
-    private func fetchRange(start: Date, end: Date) {
-        print("fetching multiple images")
     }
 
     // MARK: - Public API
@@ -100,7 +84,7 @@ final class MainViewModel {
             }
             .store(in: &cancellables)
     }
-    
+
     func load(date: Date) {
         isLoading = true
         errorMessage = nil

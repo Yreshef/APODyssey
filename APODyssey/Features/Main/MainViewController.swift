@@ -13,9 +13,7 @@ final class MainViewController: UIViewController {
     private let viewModel: MainViewModel
     private var cancellables = Set<AnyCancellable>()
     private lazy var mainView = MainView()
-    
-    // Coordinator callback
-    var onSelectDateOrRange: (() -> Void)?
+    private var errorController: ErrorAlertController?
 
     init(viewModel: MainViewModel) {
         self.viewModel = viewModel
@@ -34,7 +32,7 @@ final class MainViewController: UIViewController {
         super.viewDidLoad()
         configureNavBar()
         bindViewModel()
-        viewModel.loadWorkingImage()
+        viewModel.loadToday()
     }
 
     private func bindViewModel() {
@@ -52,14 +50,8 @@ final class MainViewController: UIViewController {
                 self?.mainView.setLoading(loading)
             }
             .store(in: &cancellables)
-
-        viewModel.$errorMessage
-            .compactMap { $0 }
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] msg in
-                self?.showError(msg)
-            }
-            .store(in: &cancellables)
+        
+        errorController = bindErrorAlert(to: self, from: viewModel.errorMessagePublisher)
     }
 
     private func configureNavBar() {
@@ -80,9 +72,9 @@ final class MainViewController: UIViewController {
         alert.addAction(.init(title: "OK", style: .default))
         present(alert, animated: true)
     }
-    
+
     @objc private func selectDateTapped() {
-        presentCalendarPicker() {
+        presentCalendarPicker {
             [weak self] components in
             guard let self = self else { return }
             self.viewModel.handleUserDateSelection(components)
