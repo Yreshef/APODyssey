@@ -13,7 +13,7 @@ struct APODResponse: Decodable, Identifiable, Hashable {
     let date: String
     let title: String
     let explanation: String
-    let url: String
+    let url: String?
     let hdurl: String?
     let mediaType: String
     let copyright: String?

@@ -48,7 +48,8 @@ final class APODRepository: PictureRepository {
                 > in
                 guard
                     response.mediaType == "image",
-                    let imageURL = URL(string: response.url)
+                    let url = response.url,
+                    let imageURL = URL(string: url)
                 else {
                     return Fail(
                         error: PictureRepositoryError.mediaTypeUnsupported
@@ -89,12 +90,13 @@ final class APODRepository: PictureRepository {
                     [PictureOfTheDay], PictureRepositoryError
                 > in
                 let validResponses = responses.filter {
-                    $0.mediaType == "image" && URL(string: $0.url) != nil
+                    $0.mediaType == "image" && ($0.url.flatMap{URL(string: $0)} != nil)
                 }
 
                 let publishers = validResponses.map {
                     response -> AnyPublisher<PictureOfTheDay, Never> in
-                    guard let imageURL = URL(string: response.url) else {
+                    guard let url = response.url,
+                        let imageURL = URL(string: url) else {
                         return Empty().eraseToAnyPublisher()
                     }
 

@@ -15,11 +15,11 @@ enum APODRoute: Route {
     case random(count: Int)
     
     private var apiKey: String {
-        return ""
+        return Environment.nasaApiKey
     }
     
     var urlPath: String {
-        return "/planetarium/apod"
+        return "https://api.nasa.gov/planetary/apod"
     }
     
     var parameters: [String : String] {
