@@ -47,6 +47,10 @@ final class GalleryViewController: UIViewController {
         setupUI()
         bindViewModel()
     }
+    
+    deinit {
+        print("Gallery deinit")
+    }
 
     // MARK: - Setup
     private func setupUI() {

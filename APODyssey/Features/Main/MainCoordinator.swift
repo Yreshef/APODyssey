@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import SwiftUI
 
 final class MainCoordinator: NSObject, Coordinator, UINavigationControllerDelegate {
 
@@ -47,8 +48,17 @@ final class MainCoordinator: NSObject, Coordinator, UINavigationControllerDelega
     }
 
     private func showDetail(for date: Date) {
-        //TODO: implement detail navigation
-        print("Showing detail screen soon...")
+        let viewModel = PictureDetailViewModel(repository: dependencies.pictureRepository, date: date)
+        let detailsView = PictureDetailView(viewModel: viewModel)
+        let controller = UIHostingController(rootView: detailsView)
+        navigationController.pushViewController(controller, animated: true)
+    }
+    
+    private func showDetail(with picture: PictureOfTheDay) {
+        let viewModel = PictureDetailViewModel(repository: dependencies.pictureRepository, initialPicture: picture)
+        let detailsView = PictureDetailView(viewModel: viewModel)
+        let controller = UIHostingController(rootView: detailsView)
+        navigationController.pushViewController(controller, animated: true)
     }
 
     private func showGallery(start: Date, end: Date) {
@@ -58,7 +68,7 @@ final class MainCoordinator: NSObject, Coordinator, UINavigationControllerDelega
         
         viewModel.onImageTapped = { [weak self] image in
             print("Image: \(image)")
-            self?.showDetail(for: Date()) //TODO: Implement navigation
+            self?.showDetail(with: image)
         }
         
         let galleryVC = GalleryViewController(viewModel: viewModel)
@@ -69,10 +79,12 @@ final class MainCoordinator: NSObject, Coordinator, UINavigationControllerDelega
     // MARK: - Coordinator Helpers
     
     func addChild(_ coordinator: Coordinator) {
+        print("Adding child")
         childCoordinators.append(coordinator)
     }
 
     func removeChild(_ coordinator: Coordinator) {
+        print("Removing child")
         childCoordinators.removeAll { $0 === coordinator }
     }
 

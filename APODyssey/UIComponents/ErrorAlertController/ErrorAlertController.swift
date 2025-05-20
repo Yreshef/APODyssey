@@ -22,14 +22,14 @@ final class ErrorAlertController {
           cancellable = errorMessages
               .compactMap { $0 } // skip nils
               .receive(on: DispatchQueue.main)
-              .sink { message in
+              .sink { [weak viewController] message in
                   let alert = UIAlertController(
                       title: "Error",
                       message: message,
                       preferredStyle: .alert
                   )
                   alert.addAction(.init(title: "OK", style: .default))
-                  viewController.present(alert, animated: true)
+                  viewController?.present(alert, animated: true)
               }
       }
 }

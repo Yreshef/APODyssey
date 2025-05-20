@@ -46,10 +46,8 @@ final class GalleryViewModel: ErrorEmitting {
                 }
             } receiveValue: { [weak self] picture in
                 self?.items.append(picture)
-                print(self?.items)
             }
             .store(in: &cancellables)
-
     }
     
     func didSelectItem(_ item: PictureOfTheDay) {

@@ -45,27 +45,6 @@ final class MainViewModel: ErrorEmitting {
     }
 
     // MARK: - Public API
-    func loadWorkingImage() {
-        isLoading = true
-        errorMessage = nil
-
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        if let lastImageDay = formatter.date(from: "2025-05-17") {
-            repository.fetchPicture(for: lastImageDay)
-                .receive(on: DispatchQueue.main)
-                .sink { [weak self] completion in
-                    guard let self = self else { return }
-                    self.isLoading = false
-                    if case let .failure(error) = completion {
-                        self.errorMessage = error.localizedDescription
-                    }
-                } receiveValue: { [weak self] picture in
-                    self?.picture = picture
-                }
-                .store(in: &cancellables)
-        }
-    }
 
     func loadToday() {
         isLoading = true
