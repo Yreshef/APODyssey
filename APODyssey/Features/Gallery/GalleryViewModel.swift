@@ -16,6 +16,7 @@ final class GalleryViewModel: ErrorEmitting {
 
     @Published private(set) var items: [PictureOfTheDay] = []
     @Published private(set) var errorMessage: String?
+    @Published var expandedIndexPath: IndexPath?
  
     var onImageTapped: ((PictureOfTheDay) -> Void)?
 
@@ -52,5 +53,17 @@ final class GalleryViewModel: ErrorEmitting {
     
     func didSelectItem(_ item: PictureOfTheDay) {
         onImageTapped?(item)
+    }
+    
+    func toggleExpansion(at indexPath: IndexPath) {
+        if expandedIndexPath == indexPath {
+            expandedIndexPath = nil
+        } else {
+            expandedIndexPath = indexPath
+        }
+    }
+    
+    func isExpanded(_ indexPath: IndexPath) -> Bool {
+        return expandedIndexPath == indexPath
     }
 }

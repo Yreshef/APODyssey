@@ -14,12 +14,15 @@ final class GalleryViewController: UIViewController {
 
     private lazy var collectionView: UICollectionView = {
         let layout = UICollectionViewFlowLayout()
-        layout.itemSize = CGSize(width: view.bounds.width - 32, height: 116)
+        layout.estimatedItemSize = .zero
         layout.minimumLineSpacing = 12
         layout.sectionInset = UIEdgeInsets(top: 16, left: 0, bottom: 16, right: 0)
         let cv = UICollectionView(frame: .zero, collectionViewLayout: layout)
+        cv.allowsSelection = true
+        cv.allowsMultipleSelection = false
         return cv
     }()
+    
     private var errorController: ErrorAlertController?
 
     // MARK: - Properties
@@ -27,6 +30,9 @@ final class GalleryViewController: UIViewController {
     private let viewModel: GalleryViewModel
     private var cancellables = Set<AnyCancellable>()
     private var items: [PictureOfTheDay] = []
+    
+    let collapsedHeight: CGFloat = 116
+    let expandedHeight: CGFloat = 380
 
     // MARK: ViewModel Callbacks
 
@@ -59,8 +65,8 @@ final class GalleryViewController: UIViewController {
         collectionView.backgroundColor = .clear
         collectionView.delegate = self
         collectionView.dataSource = self
-        collectionView.register(
-            GalleryCell.self, forCellWithReuseIdentifier: GalleryCell.reuseID)
+        collectionView.register(CollapsedGalleryCell.self, forCellWithReuseIdentifier: CollapsedGalleryCell.reuseID)
+        collectionView.register(ExpandedGalleryCell.self, forCellWithReuseIdentifier: ExpandedGalleryCell.reuseID)
 
         view.addSubview(collectionView)
 
@@ -91,34 +97,81 @@ final class GalleryViewController: UIViewController {
 }
 
 extension GalleryViewController: UICollectionViewDelegate,
-    UICollectionViewDataSource
+                                 UICollectionViewDataSource,
+                                 UICollectionViewDelegateFlowLayout
 {
-    func collectionView(
-        _ collectionView: UICollectionView, numberOfItemsInSection section: Int
-    ) -> Int {
+    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         items.count
     }
-
+    
     func collectionView(
-        _ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath
+        _ collectionView: UICollectionView,
+        cellForItemAt indexPath: IndexPath
     ) -> UICollectionViewCell {
-        guard
-            let cell = collectionView.dequeueReusableCell(
-                withReuseIdentifier: GalleryCell.reuseID, for: indexPath)
-                as? GalleryCell
-        else {
-            return UICollectionViewCell()
-        }
-
         let item = items[indexPath.item]
-        cell.configure(with: item)
-        return cell
+        let isExpanded = viewModel.isExpanded(indexPath)
+
+        if isExpanded {
+            guard let cell = collectionView.dequeueReusableCell(
+                withReuseIdentifier: ExpandedGalleryCell.reuseID,
+                for: indexPath
+            ) as? ExpandedGalleryCell else {
+                return UICollectionViewCell()
+            }
+
+            cell.configure(with: item)
+            
+            cell.onImageTap = { [weak self] in
+                self?.viewModel.toggleExpansion(at: indexPath)
+                self?.collectionView.performBatchUpdates {
+                    self?.collectionView.reloadItems(at: [indexPath])
+                }
+            }
+       
+            return cell
+            
+        } else {
+            guard let cell = collectionView.dequeueReusableCell(
+                withReuseIdentifier: CollapsedGalleryCell.reuseID,
+                for: indexPath
+            ) as? CollapsedGalleryCell else {
+                return UICollectionViewCell()
+            }
+
+            cell.configure(with: item)
+
+            cell.onImageTap = { [weak self] in
+                guard let self else { return }
+
+                let previous = viewModel.expandedIndexPath
+                viewModel.toggleExpansion(at: indexPath)
+
+                var toReload: [IndexPath] = [indexPath]
+                if let previous, previous != indexPath {
+                    toReload.append(previous)
+                }
+
+                collectionView.performBatchUpdates {
+                    collectionView.reloadItems(at: toReload)
+                }
+            }
+            
+            let isSelected = collectionView.indexPathsForSelectedItems?.contains(indexPath) ?? false
+            cell.setSelected(isSelected)
+            
+            return cell
+        }
     }
 
-    func collectionView(
-        _ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath
-    ) {
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         let item = items[indexPath.item]
         viewModel.didSelectItem(item)
+    }
+    
+    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
+        let isExpanded = viewModel.isExpanded(indexPath)
+        let width = collectionView.bounds.width - 24
+        let height: CGFloat = isExpanded ? 440 : 116
+        return CGSize(width: width, height: height)
     }
 }
