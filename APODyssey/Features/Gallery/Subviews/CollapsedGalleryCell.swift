@@ -44,10 +44,11 @@ final class CollapsedGalleryCell: UICollectionViewCell {
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         titleLabel.font = .systemFont(ofSize: 16, weight: .medium)
         titleLabel.numberOfLines = 2
-        titleLabel.textColor = .white
-
-        self.contentView.addSubview(imageView)
-        self.contentView.addSubview(titleLabel)
+        titleLabel.textColor = .label
+        
+        contentView.backgroundColor = .systemBackground
+        contentView.addSubview(imageView)
+        contentView.addSubview(titleLabel)
 
         NSLayoutConstraint.activate([
             imageView.topAnchor.constraint(
@@ -56,7 +57,6 @@ final class CollapsedGalleryCell: UICollectionViewCell {
                 equalTo: contentView.leadingAnchor, constant: 10),
             imageView.bottomAnchor.constraint(
                 equalTo: contentView.bottomAnchor, constant: -10),
-            imageView.heightAnchor.constraint(equalToConstant: 100),
             imageView.widthAnchor.constraint(equalToConstant: 100),
 
             titleLabel.topAnchor.constraint(
@@ -72,21 +72,29 @@ final class CollapsedGalleryCell: UICollectionViewCell {
 
     func configure(with model: PictureOfTheDay) {
         titleLabel.text = model.title
-        imageView.image = model.thumbnail100 ?? model.image
-        imageView.backgroundColor =
-            imageView.image == nil ? .secondarySystemFill : .clear
+    }
+    
+    func setImage(from data: Data?) {
+        let newImage = data.flatMap(UIImage.init) ?? UIImage(named: "placeholder")
+
+        guard imageView.image !== newImage else { return }
+
+        imageView.image = newImage
+        imageView.backgroundColor = (newImage == nil) ? .secondarySystemFill : .clear
     }
 
     @objc private func handleTap() {
         onImageTap?()
     }
 
-    func setSelected(_ selected: Bool) {
-        isSelected = selected
-    }
-
     private func updateAppearance() {
         contentView.layer.borderWidth = isSelected ? 2 : 0
-        contentView.layer.borderColor = isSelected ? UIColor.white.cgColor : nil
+        contentView.layer.borderColor = isSelected ? UIColor.label.cgColor : nil
+    }
+
+    
+    override func preferredLayoutAttributesFitting(_ layoutAttributes: UICollectionViewLayoutAttributes) -> UICollectionViewLayoutAttributes {
+        layoutAttributes.frame.size.height = 116
+        return layoutAttributes
     }
 }

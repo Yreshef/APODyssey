@@ -42,7 +42,7 @@ final class ExpandedGalleryCell: UICollectionViewCell {
         // Labels
         titleLabel.font = .systemFont(ofSize: 16, weight: .semibold)
         titleLabel.numberOfLines = 0
-        titleLabel.textColor = .white
+        titleLabel.textColor = .label
 
         dateLabel.font = .systemFont(ofSize: 14)
         dateLabel.textColor = .lightGray
@@ -60,7 +60,7 @@ final class ExpandedGalleryCell: UICollectionViewCell {
         containerStack.addArrangedSubview(hashLabel)
 
         contentView.addSubview(containerStack)
-        contentView.backgroundColor = .black
+        contentView.backgroundColor = .systemBackground
         contentView.layer.cornerRadius = 16
         contentView.clipsToBounds = true
 
@@ -75,9 +75,17 @@ final class ExpandedGalleryCell: UICollectionViewCell {
     func configure(with model: PictureOfTheDay) {
         titleLabel.text = model.title
         dateLabel.text = "Date: \(model.date)"
-        hashLabel.text = "Hash: \(model.thumbnail300Hash ?? "N/A")"
-        imageView.image = model.thumbnail300 ?? model.image
-        imageView.backgroundColor = imageView.image == nil ? .secondarySystemFill : .clear
+        hashLabel.text = "Hash: \(model.hash1)"
+
+    }
+    
+    func setImage(from data: Data?) {
+        let newImage = data.flatMap(UIImage.init) ?? UIImage(named: "placeholder")
+
+        guard imageView.image !== newImage else { return }
+
+        imageView.image = newImage
+        imageView.backgroundColor = (newImage == nil) ? .secondarySystemFill : .clear
     }
     
     @objc private func handleTap() {

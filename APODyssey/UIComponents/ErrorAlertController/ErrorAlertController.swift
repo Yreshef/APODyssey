@@ -8,6 +8,7 @@
 import UIKit
 import Combine
 
+@MainActor
 protocol ErrorEmitting: AnyObject {
     var errorMessagePublisher: AnyPublisher<String?, Never> { get }
 }

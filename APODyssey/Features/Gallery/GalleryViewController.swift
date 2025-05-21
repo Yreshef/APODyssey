@@ -22,14 +22,20 @@ final class GalleryViewController: UIViewController {
         cv.allowsMultipleSelection = false
         return cv
     }()
-    
+    private let loadingIndicator: UIActivityIndicatorView = {
+        let spinner = UIActivityIndicatorView(style: .large)
+        spinner.translatesAutoresizingMaskIntoConstraints = false
+        spinner.hidesWhenStopped = true
+        spinner.tintColor = .label
+        return spinner
+    }()
     private var errorController: ErrorAlertController?
 
     // MARK: - Properties
 
     private let viewModel: GalleryViewModel
     private var cancellables = Set<AnyCancellable>()
-    private var items: [PictureOfTheDay] = []
+    private var pictures: [PictureOfTheDay] = []
     
     let collapsedHeight: CGFloat = 116
     let expandedHeight: CGFloat = 380
@@ -54,6 +60,23 @@ final class GalleryViewController: UIViewController {
         bindViewModel()
     }
     
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        if let index = viewModel.selectedIndex {
+            DispatchQueue.main.async {
+                self.highlightSelectedCell(at: index)
+                self.viewModel.selectedIndex = nil
+            }
+        }
+    }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        if !pictures.isEmpty {
+            loadingIndicator.stopAnimating()
+        }
+    }
+    
     deinit {
         print("Gallery deinit")
     }
@@ -69,10 +92,13 @@ final class GalleryViewController: UIViewController {
         collectionView.register(ExpandedGalleryCell.self, forCellWithReuseIdentifier: ExpandedGalleryCell.reuseID)
 
         view.addSubview(collectionView)
-
         collectionView.translatesAutoresizingMaskIntoConstraints = false
+        
+        view.addSubview(loadingIndicator)
 
         NSLayoutConstraint.activate([
+            loadingIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            loadingIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor),
             collectionView.topAnchor.constraint(equalTo: view.topAnchor),
             collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             collectionView.leadingAnchor.constraint(
@@ -80,20 +106,61 @@ final class GalleryViewController: UIViewController {
             collectionView.trailingAnchor.constraint(
                 equalTo: view.trailingAnchor),
         ])
+        
+        view.bringSubviewToFront(loadingIndicator)
     }
 
     // MARK: - Bindings
     private func bindViewModel() {
-        viewModel.$items
+        viewModel.$pictures
             .receive(on: DispatchQueue.main)
             .sink { [weak self] items in
-                self?.items = items
+                self?.pictures = items
                 self?.collectionView.reloadData()
+                self?.loadingIndicator.stopAnimating()
+            }
+            .store(in: &cancellables)
+        
+        viewModel.$updatedThumbnailID
+            .compactMap { $0 }
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] id in
+                guard let index = self?.pictures.firstIndex(where: { $0.id == id }) else { return }
+                let indexPath = IndexPath(item: index, section: 0)
+                
+                guard let cell = self?.collectionView.cellForItem(at: indexPath) else { return }
+                
+                let imageData = self?.viewModel.thumbnails[id]
+                
+                if let expandedCell = cell as? ExpandedGalleryCell {
+                    expandedCell.setImage(from: imageData)
+                } else if let collapsedCell = cell as? CollapsedGalleryCell {
+                    collapsedCell.setImage(from: imageData)
+                }
+            }
+            .store(in: &cancellables)
+        
+        viewModel.$isLoading
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] isLoading in
+                isLoading ? self?.loadingIndicator.startAnimating() : self?.loadingIndicator.stopAnimating()
             }
             .store(in: &cancellables)
         
         errorController = bindErrorAlert(to: self, from: viewModel.errorMessagePublisher)
     }
+    
+    func highlightSelectedCell(at index: Int) {
+        let indexPath = IndexPath(item: index, section: 0)
+        
+        collectionView.layoutIfNeeded() // ensure cell layout is done
+        collectionView.selectItem(at: indexPath, animated: true, scrollPosition: [])
+
+        // Optional: Reload the item to trigger visual update in case it's offscreen
+        collectionView.reloadItems(at: [indexPath])
+    }
+
+
 }
 
 extension GalleryViewController: UICollectionViewDelegate,
@@ -101,14 +168,12 @@ extension GalleryViewController: UICollectionViewDelegate,
                                  UICollectionViewDelegateFlowLayout
 {
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        items.count
+        pictures.count
     }
     
-    func collectionView(
-        _ collectionView: UICollectionView,
-        cellForItemAt indexPath: IndexPath
-    ) -> UICollectionViewCell {
-        let item = items[indexPath.item]
+    func collectionView(_ collectionView: UICollectionView,
+                        cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+        let picture = pictures[indexPath.item]
         let isExpanded = viewModel.isExpanded(indexPath)
 
         if isExpanded {
@@ -119,7 +184,8 @@ extension GalleryViewController: UICollectionViewDelegate,
                 return UICollectionViewCell()
             }
 
-            cell.configure(with: item)
+            cell.configure(with: picture)
+            viewModel.loadThumbnails(for: picture)
             
             cell.onImageTap = { [weak self] in
                 self?.viewModel.toggleExpansion(at: indexPath)
@@ -138,7 +204,8 @@ extension GalleryViewController: UICollectionViewDelegate,
                 return UICollectionViewCell()
             }
 
-            cell.configure(with: item)
+            cell.configure(with: picture)
+            viewModel.loadThumbnails(for: picture)
 
             cell.onImageTap = { [weak self] in
                 guard let self else { return }
@@ -155,17 +222,28 @@ extension GalleryViewController: UICollectionViewDelegate,
                     collectionView.reloadItems(at: toReload)
                 }
             }
-            
+            collectionView.selectItem(at: indexPath, animated: false, scrollPosition: [])
+
             let isSelected = collectionView.indexPathsForSelectedItems?.contains(indexPath) ?? false
-            cell.setSelected(isSelected)
             
             return cell
         }
     }
+    
+    func collectionView(_ collectionView: UICollectionView, willDisplay cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
+        let picture = pictures[indexPath.item]
+           let image = viewModel.thumbnails[picture.id]
+
+           if let expanded = cell as? ExpandedGalleryCell {
+               expanded.setImage(from: image)
+           } else if let collapsed = cell as? CollapsedGalleryCell {
+               collapsed.setImage(from: image)
+           }
+    }
 
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        let item = items[indexPath.item]
-        viewModel.didSelectItem(item)
+        let picture = pictures[indexPath.item]
+        viewModel.didSelectItem(indexPath.item)
     }
     
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {

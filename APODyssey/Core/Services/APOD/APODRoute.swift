@@ -24,15 +24,13 @@ enum APODRoute: Route {
     
     var parameters: [String : String] {
         var params: [String : String] = ["api_key" : apiKey]
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
         
         switch self {
         case .today: break
-        case .date(let date): params["date"] = formatter.string(from: date)
+        case .date(let date): params["date"] = NASADateFormatter.string(from: date)
         case .dateRange(let start, let end):
-            params["start_date"] = formatter.string(from: start)
-            params["end_date"] = formatter.string(from: end)
+            params["start_date"] = NASADateFormatter.string(from: start)
+            params["end_date"] = NASADateFormatter.string(from: end)
         case .random(let count): params["count"] = "\(count)"
         }
         

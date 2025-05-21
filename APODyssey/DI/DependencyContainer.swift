@@ -20,10 +20,8 @@ final class DependencyContainer: DependencyProviding {
     
     init(networkService: NetworkServicing = NetworkService()) {
         self.networkService = networkService
-        self.apodService = APODService(networkService: self.networkService)
-        self.imageService = ImageService(networkService: networkService,
-                                         hasher1: SHA256ImageHasher(), //Hash1 = SHA-256
-                                         hasher2: MD5ImageHashing()) //Hash2 = MD5
-        self.pictureRepository = APODRepository(apodService: apodService, imageService: imageService)
+        self.apodService = APODService(networkService: networkService, hasher1: SHA256ImageURLHasher(), hasher2: MD5ImageURLHashing())
+        self.imageService = ImageService(networkService: networkService)
+        self.pictureRepository = APODRepository(service: apodService, imageService: imageService)
     }
 }

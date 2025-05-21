@@ -51,6 +51,15 @@ final class MainViewController: UIViewController {
             }
             .store(in: &cancellables)
         
+        viewModel.$image
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] imageData in
+                if let imageData = imageData {
+                    self?.mainView.imageView.image = UIImage(data: imageData)
+                }
+            }
+            .store(in: &cancellables)
+        
         errorController = bindErrorAlert(to: self, from: viewModel.errorMessagePublisher)
     }
 
@@ -61,16 +70,6 @@ final class MainViewController: UIViewController {
             target: self,
             action: #selector(selectDateTapped)
         )
-    }
-
-    private func showError(_ message: String) {
-        let alert = UIAlertController(
-            title: "Error",
-            message: message,
-            preferredStyle: .alert
-        )
-        alert.addAction(.init(title: "OK", style: .default))
-        present(alert, animated: true)
     }
 
     @objc private func selectDateTapped() {

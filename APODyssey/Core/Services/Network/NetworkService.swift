@@ -2,39 +2,36 @@
 //  NetworkService.swift
 //  APODyssey
 //
-//  Created by Yohai on 18/05/2025.
+//  Created by Yohai on 19/05/2025.
 //
 
 import Foundation
-import Combine
 
 protocol NetworkServicing {
-    func fetch(from route: NetworkRoute) -> AnyPublisher<Data, NetworkError>
-    func fetchImageData(from url: URL) -> AnyPublisher<Data, NetworkError>
+    func fetch(from route: NetworkRoute) async throws -> Data
+    func fetchImage(from url: URL) async throws -> Data
 }
 
 final class NetworkService: NetworkServicing {
-    
     let urlSession: URLSession
     
     init(urlSession: URLSession = .shared) {
         self.urlSession = urlSession
     }
     
-    func fetch(from route: NetworkRoute) -> AnyPublisher<Data, NetworkError> {
-        
+    func fetch(from route: NetworkRoute) async throws -> Data {
         guard var components = URLComponents(string: route.urlPath) else {
-            return Fail(error: NetworkError.invalidURL).eraseToAnyPublisher()
+            throw NetworkError.invalidURL
         }
         
-        components.queryItems = route.parameters.map { key, value in
-            URLQueryItem(name: key, value: value)
+        components.queryItems = route.parameters.map {
+            URLQueryItem(name: $0.key, value: $0.value)
         }
         
         guard let url = components.url else {
-            return Fail(error: NetworkError.failedToBuildURLFromComponents).eraseToAnyPublisher()
+            throw NetworkError.failedToBuildURLFromComponents
         }
-        
+                
         var request = URLRequest(url: url)
         request.httpMethod = route.method
         request.timeoutInterval = 10
@@ -43,50 +40,30 @@ final class NetworkService: NetworkServicing {
             request.setValue(value, forHTTPHeaderField: headerField)
         }
         
-        return urlSession
-            .dataTaskPublisher(for: request)
-            .tryMap { response -> Data in
-                
-                guard let res = response.response as? HTTPURLResponse else {
-                    throw NetworkError.invalidResponse
-                }
-                
-                guard 200...299 ~= res.statusCode else {
-                    throw NetworkError.requestFailure(statusCode: res.statusCode)
-                }
-                
-                return response.data
-            }
-            .mapError { error -> NetworkError in
-                if let netError = error as? NetworkError {
-                    return netError
-                } else {
-                    return .unknown(error: error)
-                }
-            }
-            .eraseToAnyPublisher()
+        let (data, response) = try await urlSession.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NetworkError.invalidResponse
+        }
+        
+        guard 200...299 ~= httpResponse.statusCode else {
+            throw NetworkError.requestFailure(statusCode: httpResponse.statusCode)
+        }
+        
+        return data
     }
     
-    func fetchImageData(from url: URL) -> AnyPublisher<Data, NetworkError> {
-        urlSession.dataTaskPublisher(for: url)
-            .tryMap { response in
-                guard let res = response.response as? HTTPURLResponse else {
-                    throw NetworkError.invalidResponse
-                }
-                
-                guard 200...299 ~= res.statusCode else {
-                    throw NetworkError.requestFailure(statusCode: res.statusCode)
-                }
-                
-                return response.data
-            }
-            .mapError { error in
-                if let networkError = error as? NetworkError {
-                    return networkError
-                } else {
-                    return .unknown(error: error)
-                }
-            }
-            .eraseToAnyPublisher()
+    func fetchImage(from url: URL) async throws -> Data {
+        let (data, response) = try await urlSession.data(from: url)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NetworkError.invalidResponse
+        }
+        
+        guard 200...299 ~= httpResponse.statusCode else {
+            throw NetworkError.requestFailure(statusCode: httpResponse.statusCode)
+        }
+        
+        return data
     }
 }

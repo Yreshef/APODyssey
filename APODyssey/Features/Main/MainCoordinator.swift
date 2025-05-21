@@ -11,10 +11,8 @@ import SwiftUI
 final class MainCoordinator: NSObject, Coordinator, UINavigationControllerDelegate {
 
     let navigationController: UINavigationController
-    var childCoordinators: [Coordinator] = []
     private let dependencies: DependencyProviding
-    private var viewControllerToCoordinator: [UIViewController: Coordinator] =
-        [:]
+    private weak var galleryVC: GalleryViewController?
 
     init(
         navigationController: UINavigationController,
@@ -23,7 +21,6 @@ final class MainCoordinator: NSObject, Coordinator, UINavigationControllerDelega
         self.navigationController = navigationController
         self.dependencies = dependencies
         super.init()
-        self.navigationController.delegate = self
     }
 
     func start() {
@@ -37,13 +34,10 @@ final class MainCoordinator: NSObject, Coordinator, UINavigationControllerDelega
         viewModel.onDateSelected = { [weak self] date in
             self?.showDetail(for: date)
         }
-        
+
         let mainVC = MainViewController(viewModel: viewModel)
         mainVC.view.backgroundColor = .systemBackground
         mainVC.title = "APODyssey"
-
-        register(mainVC, for: self)
-
         navigationController.setViewControllers([mainVC], animated: false)
     }
 
@@ -54,8 +48,12 @@ final class MainCoordinator: NSObject, Coordinator, UINavigationControllerDelega
         navigationController.pushViewController(controller, animated: true)
     }
     
-    private func showDetail(with picture: PictureOfTheDay) {
-        let viewModel = PictureDetailViewModel(repository: dependencies.pictureRepository, initialPicture: picture)
+    private func showDetail(with pictures: [PictureOfTheDay], index: Int) {
+        let viewModel = PictureDetailViewModel(repository: dependencies.pictureRepository, pictures: pictures, initialIndex: index)
+        
+        viewModel.onDismiss = { [weak self] index in
+            self?.galleryVC?.highlightSelectedCell(at: index)
+        }
         let detailsView = PictureDetailView(viewModel: viewModel)
         let controller = UIHostingController(rootView: detailsView)
         navigationController.pushViewController(controller, animated: true)
@@ -66,54 +64,13 @@ final class MainCoordinator: NSObject, Coordinator, UINavigationControllerDelega
                                          startDate: start,
                                          endDate: end)
         
-        viewModel.onImageTapped = { [weak self] image in
-            print("Image: \(image)")
-            self?.showDetail(with: image)
+        viewModel.onImageTapped = { [weak self] pictures, index in
+            self?.showDetail(with: pictures, index: index)
         }
         
         let galleryVC = GalleryViewController(viewModel: viewModel)
+        self.galleryVC = galleryVC
         galleryVC.view.backgroundColor = .systemBackground
         navigationController.pushViewController(galleryVC, animated: true)
-    }
-
-    // MARK: - Coordinator Helpers
-    
-    func addChild(_ coordinator: Coordinator) {
-        print("Adding child")
-        childCoordinators.append(coordinator)
-    }
-
-    func removeChild(_ coordinator: Coordinator) {
-        print("Removing child")
-        childCoordinators.removeAll { $0 === coordinator }
-    }
-
-    func register(
-        _ viewController: UIViewController, for coordinator: Coordinator
-    ) {
-        viewControllerToCoordinator[viewController] = coordinator
-    }
-
-    func childDidFinish(_ child: Coordinator?) {
-        guard let child = child else { return }
-        removeChild(child)
-    }
-
-    func navigationController(
-        _ navigationController: UINavigationController,
-        didShow viewController: UIViewController, animated: Bool
-    ) {
-        guard
-            let fromViewController = navigationController.transitionCoordinator?
-                .viewController(forKey: .from),
-            !navigationController.viewControllers.contains(fromViewController)
-        else {
-            return
-        }
-
-        if let coordinator = viewControllerToCoordinator[fromViewController] {
-            removeChild(coordinator)
-            viewControllerToCoordinator[fromViewController] = nil
-        }
     }
 }

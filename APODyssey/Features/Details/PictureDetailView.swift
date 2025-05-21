@@ -9,65 +9,111 @@ import SwiftUI
 
 struct PictureDetailView: View {
     @ObservedObject var viewModel: PictureDetailViewModel
-    @State var showInfoSheet: Bool = false
-    
+    @State private var showInfoSheet: Bool = false
+
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            contentView
+            content
         }
-        .sheet(isPresented: $showInfoSheet, content: {
+        .onDisappear {
+            viewModel.onDismiss?(viewModel.currentIndex)
+        }
+    
+        .sheet(isPresented: $showInfoSheet) {
             if let picture = viewModel.picture {
                 PictureDetailInfoSheet(picture: picture)
-                    .presentationDetents([.medium, .large])
+                    .presentationDetents([.medium])
                     .presentationDragIndicator(.visible)
             }
-        })
-        .onDisappear() {
-            print("Details deinit")
         }
     }
-    
+
     @ViewBuilder
-    private var contentView: some View {
-        if viewModel.isLoading {
+    private var content: some View {
+        switch currentState {
+        case .loading:
             ProgressView("Loading...")
                 .foregroundColor(.white)
-        } else if let picture = viewModel.picture {
-            PictureContentView(picture: picture, showInfoSheet: $showInfoSheet)
-        } else {
-            EmptyView()
+                .padding()
+
+        case .loaded(let picture, let imageData):
+            PictureContentView(
+                picture: picture,
+                showInfoSheet: $showInfoSheet,
+                imageData: imageData
+            )
+            .gesture(
+                DragGesture()
+                    .onEnded { value in
+                        if value.translation.width < -50 {
+                            viewModel.goToNext()
+                        } else if value.translation.width > 50 {
+                            viewModel.goToPrevious()
+                        }
+                    }
+            )
+            .animation(.easeInOut, value: viewModel.currentIndex)
+            .transition(.slide)
+
+        case .error(let message):
+            VStack(spacing: 12) {
+                Text("🚫 Error")
+                    .font(.title2)
+                    .foregroundColor(.red)
+                Text(message)
+                    .foregroundColor(.white)
+                Button("Retry") {
+                    viewModel.retry()
+                }
+                .padding()
+                .background(.ultraThickMaterial)
+                .clipShape(Capsule())
+            }
         }
     }
-    //TODO: Implement errors in view model
-    private func errorView(message: Error) -> some View {
-        Text("Error: \(message)")
-            .foregroundColor(.red)
-            .padding()
+
+    private var currentState: DetailState {
+        if let error = viewModel.errorMessage {
+            return .error(error)
+        }
+
+        guard let picture = viewModel.picture else {
+            return .loading
+        }
+
+        return .loaded(picture, viewModel.imageData)
+    }
+
+    private enum DetailState {
+        case loading
+        case loaded(PictureOfTheDay, Data?)
+        case error(String)
     }
 }
+
 
 
 
 //#Preview {
 //    PictureDetailView(viewModel: PictureDetailViewModel(picture: PictureOfTheDay.mock))
 //}
-//TODO: Move mocks to previewMocks folder
-extension PictureOfTheDay {
-    static var mock: PictureOfTheDay {
-            PictureOfTheDay(
-                date: "2025-05-19",
-                title: "The Pillars of Creation",
-                explanation: "This famous image of interstellar gas and dust pillars is part of the Eagle Nebula, where new stars are born.",
-                copyright: "NASA/ESA",
-                imageURL: URL(string: "https://example.com/image.jpg")!,
-                hdImageURL: URL(string: "https://example.com/hd-image.jpg"),
-                image: UIImage(systemName: "photo")!,
-                hash1: "abc123def456",
-                hash2: "789ghi012jkl",
-                thumbnail100: UIImage(systemName: "photo.fill"),
-                thumbnail300: UIImage(systemName: "photo.fill"),
-                thumbnail300Hash: "thumbhash300xyz"
-            )
-        }
-}
+////TODO: Move mocks to previewMocks folder
+//extension PictureOfTheDay {
+//    static var mock: PictureOfTheDay {
+//            PictureOfTheDay(
+//                date: "2025-05-19",
+//                title: "The Pillars of Creation",
+//                explanation: "This famous image of interstellar gas and dust pillars is part of the Eagle Nebula, where new stars are born.",
+//                copyright: "NASA/ESA",
+//                imageURL: URL(string: "https://example.com/image.jpg")!,
+//                hdImageURL: URL(string: "https://example.com/hd-image.jpg"),
+//                image: UIImage(systemName: "photo")!,
+//                hash1: "abc123def456",
+//                hash2: "789ghi012jkl",
+//                thumbnail100: UIImage(systemName: "photo.fill"),
+//                thumbnail300: UIImage(systemName: "photo.fill"),
+//                thumbnail300Hash: "thumbhash300xyz"
+//            )
+//        }
+//}

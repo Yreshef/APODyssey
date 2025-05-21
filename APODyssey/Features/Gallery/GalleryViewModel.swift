@@ -5,27 +5,30 @@
 //  Created by Yohai on 19/05/2025.
 //
 
-import Combine
 import Foundation
+import Combine
 
+@MainActor
 final class GalleryViewModel: ErrorEmitting {
 
     let repository: PictureRepository
     let startDate: Date
     let endDate: Date
 
-    @Published private(set) var items: [PictureOfTheDay] = []
+    @Published private(set) var pictures: [PictureOfTheDay] = []
+    @Published private(set) var updatedThumbnailID: String?
     @Published private(set) var errorMessage: String?
     @Published var expandedIndexPath: IndexPath?
- 
-    var onImageTapped: ((PictureOfTheDay) -> Void)?
-
-    private var cancellables = Set<AnyCancellable>()
+    @Published private(set) var isLoading: Bool = false
     
+    var selectedIndex: Int?
     var errorMessagePublisher: AnyPublisher<String?, Never> {
         $errorMessage.eraseToAnyPublisher()
     }
+    private(set) var thumbnails: [String : Data] = [:]
 
+
+    var onImageTapped: (([PictureOfTheDay], Int) -> Void)?
 
     init(
         repository: PictureRepository,
@@ -38,21 +41,33 @@ final class GalleryViewModel: ErrorEmitting {
     }
 
     func fetchPictures() {
-        repository.fetchPictures(from: startDate, to: endDate)
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] completion in
-                guard let self = self else { return }
-                if case let .failure(error) = completion {
-                    self.errorMessage = error.localizedDescription
-                }
-            } receiveValue: { [weak self] picture in
-                self?.items.append(picture)
+        isLoading = true
+        errorMessage = nil
+        Task {
+            do {
+                let results = try await repository.loadPictures(from: startDate, to: endDate)
+                self.pictures = results
+            } catch {
+                self.errorMessage = error.localizedDescription
             }
-            .store(in: &cancellables)
+        }
     }
     
-    func didSelectItem(_ item: PictureOfTheDay) {
-        onImageTapped?(item)
+    func loadThumbnails(for picture: PictureOfTheDay) {
+        guard self.thumbnails[picture.id] == nil else { return }
+
+        Task.detached(priority: .utility) {
+            do {
+                let data = try await self.repository.loadImage(for: picture)
+                
+                await MainActor.run {
+                    self.thumbnails[picture.id] = data
+                    self.updatedThumbnailID = picture.id
+                }
+            } catch {
+                //TODO: Assign placeholder or fail here
+            }
+        }
     }
     
     func toggleExpansion(at indexPath: IndexPath) {
@@ -65,5 +80,9 @@ final class GalleryViewModel: ErrorEmitting {
     
     func isExpanded(_ indexPath: IndexPath) -> Bool {
         return expandedIndexPath == indexPath
+    }
+    
+    func didSelectItem(_ index: Int) {
+        onImageTapped?(pictures, index)
     }
 }

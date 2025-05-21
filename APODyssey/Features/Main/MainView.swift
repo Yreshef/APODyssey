@@ -100,7 +100,7 @@ final class MainView: UIView {
 
     /// Configures the view with the given picture data.
     func configure(with picture: PictureOfTheDay) {
-        imageView.image = picture.image
+        imageView.image = UIImage(named: "Placeholder")
         dateLabel.text = picture.date
         explanationLabel.text = picture.explanation
         copyrightLabel.text = picture.copyright

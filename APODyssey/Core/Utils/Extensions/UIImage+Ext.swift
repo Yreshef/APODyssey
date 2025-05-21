@@ -17,7 +17,7 @@ extension UIImage {
         return UIGraphicsGetImageFromCurrentImageContext()
     }
     
-    func hash(using hasher: ImageHashing) -> String? {
+    func hash(using hasher: ImageURLHashing) -> String? {
         guard let data = self.pngData() else { return nil }
         return hasher.hash(data: data)
     }
